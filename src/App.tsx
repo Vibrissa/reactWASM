@@ -1,40 +1,57 @@
 import React from "react";
-import logo from "./logo.svg";
+
 import "./App.css";
 import { scanImageData } from "zbar.wasm";
-import qrcode from "./testQRcode.png";
+import { videoStream } from "./utils/videoStream";
 
 function App() {
-  const tryWASM = React.useCallback(async () => {
-    const url = qrcode;
-    const img = new Image();
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
-    img.src = url;
-    img.onload = async () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(img, 0, 0);
-        const imageData = ctx.getImageData(0, 0, img.width, img.height);
-        const res = await scanImageData(imageData);
-        console.log(res[0].typeName); // ZBAR_QRCODE
-        console.log(res[0].decode()); // Hello World
+  const drawVideo = React.useCallback(async () => {
+    const ctx = canvasRef.current?.getContext("2d");
+
+    if (ctx) {
+      ctx.drawImage(videoRef.current!, 0, 0, 640, 480);
+      const imageData = ctx.getImageData(0, 0, 640, 480);
+      ctx.arc(100, 75, 50, 0, 2 * Math.PI);
+      const res = await scanImageData(imageData);
+      if (res.length > 0) {
+        const points = res[0].points;
+        ctx.beginPath();
+        ctx.arc(points[0].x, points[0].y, 10, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(points[1].x, points[1].y, 10, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(points[2].x, points[2].y, 10, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(points[3].x, points[3].y, 10, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.font = "25px Arial";
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillText(res[0].decode(), 10, 50);
       }
-    };
+    }
+    requestAnimationFrame(drawVideo);
   }, []);
+  React.useLayoutEffect(() => {
+    if (videoRef.current && canvasRef.current) {
+      videoStream(videoRef.current);
+
+      canvasRef.current.width = 640;
+      canvasRef.current.height = 480;
+      requestAnimationFrame(drawVideo);
+    }
+  }, [drawVideo]);
+
   return (
     <div className="App">
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a className="App-link" href="https://reactjs.org" target="_blank" rel="noopener noreferrer">
-          Learn React
-        </a>
-        <button onClick={tryWASM}>666test</button>
+        <video playsInline autoPlay ref={videoRef} />
+        <canvas ref={canvasRef} />
       </header>
     </div>
   );
